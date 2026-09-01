@@ -284,6 +284,11 @@ def bounded_repair_prompt(failed: str, error: str) -> str:
             "Devuelve solo el objeto JSON corregido.\nOBJETO FALLIDO:\n" + failed +
             "\nERROR EXACTO DEL VALIDADOR:\n" + error)
 
+REPAIR_SYSTEM = (
+    "Eres un reparador de JSON. Usa exclusivamente el objeto fallido y el error "
+    "entregados por el usuario. Devuelve solo el objeto JSON corregido."
+)
+
 class TSVLog:
     def __init__(self, path: Path):
         self.path = path
@@ -439,7 +444,7 @@ def run(cfg: Config, call: Callable[[str, str], str], out: Path, dry: bool = Fal
     for key, text in NORMALS.items():
         raw = call(c2, text); n += 1; d, error = verdict(None, raw, v1); log.append(n, "R3", c2, text, raw, d); strict[key] = {"initial":d,"raw":raw,"error":error,"repairs":0}
         while error and strict[key]["repairs"] < 2:
-            strict[key]["repairs"] += 1; repair_counts[key] += 1; prompt = bounded_repair_prompt(raw, error); repaired = call(c2, prompt); n += 1; rd, error = verdict(None, repaired, v1); log.append(n, f"R3-reparacion-{strict[key]['repairs']}", c2, prompt, repaired, rd); raw = repaired
+            strict[key]["repairs"] += 1; repair_counts[key] += 1; prompt = bounded_repair_prompt(raw, error); repaired = call(REPAIR_SYSTEM, prompt); n += 1; rd, error = verdict(None, repaired, v1); log.append(n, f"R3-reparacion-{strict[key]['repairs']}", REPAIR_SYSTEM, prompt, repaired, rd); raw = repaired
         strict[key]["final"] = "válida" if error is None else "inválida"
     # Medición acotada, nunca una llamada ficticia ni una fila ficticia.
     sample = next((x for x in strict.values() if x["error"]), {"raw":"{\"confidence\": 2}", "error":"confidence: 2 is greater than 1"})
